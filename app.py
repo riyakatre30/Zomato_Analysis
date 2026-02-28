@@ -3,28 +3,32 @@ import pandas as pd
 import plotly.express as px
 import os
 
-st.set_page_config(layout="wide", page_title="Zomato 2026 Dashboard")
+st.set_page_config(layout="wide", page_title="Zomato Analysis")
 
-# ------------------ AESTHETIC BACKGROUND ------------------
+# ------------------ PREMIUM THEME ------------------
 st.markdown("""
 <style>
 .stApp {
-    background: linear-gradient(135deg, #1f1c2c, #928dab);
+    background-color: #0B1220;
+    color: #FFFFFF;
 }
 section[data-testid="stSidebar"] {
-    background: #111827;
+    background-color: #111827;
 }
 div[data-testid="metric-container"] {
-    background: rgba(255,255,255,0.05);
-    border-radius: 12px;
+    background: #111827;
+    border-radius: 10px;
     padding: 15px;
-    backdrop-filter: blur(8px);
+    border: 1px solid #1f2937;
+}
+h1, h2, h3 {
+    color: #FFFFFF;
 }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🍽️ Zomato Executive Insights Dashboard")
-st.markdown("### Real-Time Restaurant Performance Analysis")
+st.title(" Zomato  Dashboard")
+
 
 # ------------------ LOAD DATA ------------------
 @st.cache_data
@@ -44,8 +48,8 @@ def load_data():
 
 df = load_data()
 
-# ------------------ SIDEBAR SLICER ------------------
-st.sidebar.header("🔎 Filters")
+# ------------------ SIDEBAR FILTERS ------------------
+st.sidebar.header("Filters")
 
 location = st.sidebar.selectbox("Select Location", sorted(df.location.unique()))
 filtered_df = df[df.location == location]
@@ -53,48 +57,56 @@ filtered_df = df[df.location == location]
 restaurant = st.sidebar.selectbox("Select Restaurant", sorted(filtered_df.name.unique()))
 restaurant_df = filtered_df[filtered_df.name == restaurant]
 
-# ------------------ KPI CARDS ------------------
+# ------------------ KPI ROW ------------------
 col1, col2, col3, col4 = st.columns(4)
 
-col1.metric("⭐ Rating", round(restaurant_df.rate.mean(),2))
-col2.metric("🗳 Votes", int(restaurant_df.votes.mean()))
-col3.metric("💰 Avg Cost", f"₹ {int(restaurant_df.approx_cost.mean())}")
-col4.metric("🍴 Rest Type", restaurant_df.rest_type.mode()[0])
+col1.metric(" Rating", round(restaurant_df.rate.mean(),2))
+col2.metric(" Votes", int(restaurant_df.votes.mean()))
+col3.metric(" Avg Cost (2 People)", f"₹ {int(restaurant_df.approx_cost.mean())}")
+col4.metric(" Restaurant Type", restaurant_df.rest_type.mode()[0])
 
 st.markdown("---")
 
 # ------------------ MAIN GRID ------------------
 colA, colB = st.columns([1.4,1])
 
-# -------- Chart 1: Votes vs Rating (Main Impact Chart) --------
+# -------- Restaurant-wise Cost Comparison --------
 with colA:
-    fig1 = px.scatter(
+    cost_df = filtered_df.groupby("name")["approx_cost"].mean().sort_values(ascending=False).head(12).reset_index()
+
+    fig1 = px.bar(
+        cost_df,
+        x="name",
+        y="approx_cost",
+        title="Top 12 Restaurants by Average Cost",
+        color_discrete_sequence=["#E23744"]
+    )
+    fig1.update_layout(
+        height=400,
+        xaxis_tickangle=-45,
+        plot_bgcolor="#0B1220",
+        paper_bgcolor="#0B1220",
+        font=dict(color="white")
+    )
+    st.plotly_chart(fig1, use_container_width=True)
+
+# -------- Votes vs Rating --------
+with colB:
+    fig2 = px.scatter(
         filtered_df,
         x="votes",
         y="rate",
         size="approx_cost",
-        color="rate",
         hover_name="name",
-        color_continuous_scale="Tealgrn",
-        title="Restaurant Popularity vs Rating"
+        color_discrete_sequence=["#2DD4BF"]
     )
-    fig1.update_layout(height=400)
-    st.plotly_chart(fig1, use_container_width=True)
-
-# -------- Chart 2: Cost Distribution --------
-with colB:
-    top_cost = filtered_df.groupby("name")["approx_cost"].mean().nlargest(8).reset_index()
-
-    fig2 = px.bar(
-        top_cost,
-        x="approx_cost",
-        y="name",
-        orientation="h",
-        color="approx_cost",
-        color_continuous_scale="sunset",
-        title="Top 8 Costly Restaurants"
+    fig2.update_layout(
+        height=400,
+        plot_bgcolor="#0B1220",
+        paper_bgcolor="#0B1220",
+        font=dict(color="white"),
+        title="Votes vs Rating Analysis"
     )
-    fig2.update_layout(height=400)
     st.plotly_chart(fig2, use_container_width=True)
 
 st.markdown("---")
@@ -102,36 +114,42 @@ st.markdown("---")
 # ------------------ BOTTOM SECTION ------------------
 colC, colD = st.columns(2)
 
-# -------- Chart 3: Rating Trend Line --------
+# -------- Rating Distribution --------
 with colC:
-    rating_dist = filtered_df.groupby("rate")["votes"].mean().reset_index()
-
-    fig3 = px.line(
-        rating_dist,
+    fig3 = px.histogram(
+        filtered_df,
         x="rate",
-        y="votes",
-        markers=True,
-        title="Average Votes per Rating Level",
-        color_discrete_sequence=["#FF4B2B"]
+        nbins=20,
+        color_discrete_sequence=["#6366F1"]
     )
-    fig3.update_layout(height=300)
+    fig3.update_layout(
+        height=300,
+        plot_bgcolor="#0B1220",
+        paper_bgcolor="#0B1220",
+        font=dict(color="white"),
+        title="Rating Distribution"
+    )
     st.plotly_chart(fig3, use_container_width=True)
 
-# -------- Chart 4: Top Restaurant Types --------
+# -------- Top Restaurant Types --------
 with colD:
-    type_analysis = filtered_df.rest_type.value_counts().nlargest(10).reset_index()
-    type_analysis.columns = ["rest_type", "count"]
+    type_df = filtered_df.rest_type.value_counts().head(10).reset_index()
+    type_df.columns = ["rest_type", "count"]
 
     fig4 = px.bar(
-        type_analysis,
+        type_df,
         x="count",
         y="rest_type",
         orientation="h",
-        color="count",
-        color_continuous_scale="magma",
+        color_discrete_sequence=["#F59E0B"]
+    )
+    fig4.update_layout(
+        height=300,
+        plot_bgcolor="#0B1220",
+        paper_bgcolor="#0B1220",
+        font=dict(color="white"),
         title="Top 10 Restaurant Types"
     )
-    fig4.update_layout(height=300)
     st.plotly_chart(fig4, use_container_width=True)
 
-st.markdown("### 🚀 2026 Interactive Executive Dashboard | Portfolio Ready")
+st.markdown("### 2026 Executive Analytics | Portfolio Ready")
