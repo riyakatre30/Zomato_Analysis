@@ -5,20 +5,25 @@ import plotly.express as px
 st.set_page_config(page_title="Zomato Analytics", layout="wide")
 
 # -----------------------------
-# Smoky Gradient Background
+# Smoky Dark Gradient Background
 # -----------------------------
 st.markdown("""
 <style>
 .main {
-    background: linear-gradient(135deg, #2c3e50, #3a3f47, #4b5563);
+    background: linear-gradient(135deg, #232526, #414345);
 }
 h1, h2, h3 {
     color: white;
 }
+[data-testid="metric-container"] {
+    background-color: rgba(0,0,0,0.35);
+    padding: 10px;
+    border-radius: 10px;
+}
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🍽 Zomato  Analytics ")
+st.title(" Zomato Analytics ")
 
 # -----------------------------
 # Load Data
@@ -42,7 +47,7 @@ df = load_data()
 # -----------------------------
 # Sidebar Filters
 # -----------------------------
-st.sidebar.header(" Filter Panel")
+st.sidebar.header("🔎 Filter Panel")
 
 location = st.sidebar.selectbox(
     "Select Location",
@@ -64,7 +69,7 @@ rest_df = filtered_df[filtered_df['name'] == restaurant]
 col1, col2, col3, col4 = st.columns(4)
 
 col1.metric(" Rating", round(rest_df['rate'].mean(), 2))
-col2.metric(" Total Votes", int(rest_df['votes'].sum()))
+col2.metric("Total Votes", int(rest_df['votes'].sum()))
 col3.metric(" Avg Cost", int(rest_df['approx_cost'].mean()))
 col4.metric(" Top Rest Type",
             filtered_df['rest_type'].mode()[0]
@@ -95,11 +100,11 @@ with left:
         y='approx_cost',
         color='approx_cost',
         color_continuous_scale=[
-            "#0d1b2a",  # dark navy
-            "#1b263b",
-            "#415a77",
-            "#778da9",
-            "#a8dadc"   # light blue
+            "#003d29",   # dark green
+            "#006644",
+            "#009966",
+            "#00cc88",
+            "#66ffcc"    # light green
         ]
     )
 
@@ -112,10 +117,9 @@ with left:
 
     st.plotly_chart(fig_loc, use_container_width=True)
 
-
 # 🍽 Restaurant Wise Cost
 with right:
-    st.subheader("Restaurants ")
+    st.subheader(" Restaurants ")
 
     top_cost = (
         filtered_df.groupby('name')['approx_cost']
@@ -130,11 +134,11 @@ with right:
         y='approx_cost',
         color='approx_cost',
         color_continuous_scale=[
-            "#001f3f",
-            "#003566",
-            "#00509d",
-            "#3a86ff",
-            "#90e0ef"
+            "#002b1a",
+            "#004d33",
+            "#007f4d",
+            "#00b36b",
+            "#33ff99"
         ]
     )
 
