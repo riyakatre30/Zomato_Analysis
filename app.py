@@ -3,34 +3,33 @@ import pandas as pd
 import plotly.express as px
 import os
 
-st.set_page_config(layout="wide", page_title="Zomato Analysis")
+st.set_page_config(layout="wide", page_title="Zomato BI Dashboard")
 
-# ------------------ PREMIUM THEME ------------------
+# ---------- PREMIUM CSS ----------
 st.markdown("""
 <style>
 .stApp {
-    background-color: #0B1220;
-    color: #FFFFFF;
+    background-color: #0F172A;
 }
 section[data-testid="stSidebar"] {
     background-color: #111827;
 }
 div[data-testid="metric-container"] {
-    background: #111827;
-    border-radius: 10px;
-    padding: 15px;
-    border: 1px solid #1f2937;
+    background: #1E293B;
+    border-radius: 12px;
+    padding: 18px;
+    border: 1px solid #334155;
 }
 h1, h2, h3 {
-    color: #FFFFFF;
+    color: white;
 }
 </style>
 """, unsafe_allow_html=True)
 
-st.title(" Zomato  Dashboard")
+st.title("🍽️ Zomato Business Intelligence Dashboard")
+st.caption("Executive Restaurant Performance Overview")
 
-
-# ------------------ LOAD DATA ------------------
+# ---------- LOAD DATA ----------
 @st.cache_data
 def load_data():
     file_path = os.path.join(os.path.dirname(__file__), "Zomato_Data.csv")
@@ -48,92 +47,104 @@ def load_data():
 
 df = load_data()
 
-# ------------------ SIDEBAR FILTERS ------------------
+# ---------- SIDEBAR ----------
 st.sidebar.header("Filters")
-
-location = st.sidebar.selectbox("Select Location", sorted(df.location.unique()))
+location = st.sidebar.selectbox("Location", sorted(df.location.unique()))
 filtered_df = df[df.location == location]
 
-restaurant = st.sidebar.selectbox("Select Restaurant", sorted(filtered_df.name.unique()))
+restaurant = st.sidebar.selectbox("Restaurant", sorted(filtered_df.name.unique()))
 restaurant_df = filtered_df[filtered_df.name == restaurant]
 
-# ------------------ KPI ROW ------------------
-col1, col2, col3, col4 = st.columns(4)
+# ---------- KPI ROW ----------
+k1, k2, k3, k4 = st.columns(4)
 
-col1.metric(" Rating", round(restaurant_df.rate.mean(),2))
-col2.metric(" Votes", int(restaurant_df.votes.mean()))
-col3.metric(" Avg Cost (2 People)", f"₹ {int(restaurant_df.approx_cost.mean())}")
-col4.metric(" Restaurant Type", restaurant_df.rest_type.mode()[0])
+k1.metric("⭐ Rating", round(restaurant_df.rate.mean(),2))
+k2.metric("🗳 Votes", int(restaurant_df.votes.mean()))
+k3.metric("💰 Avg Cost (2 People)", f"₹ {int(restaurant_df.approx_cost.mean())}")
+k4.metric("🍴 Type", restaurant_df.rest_type.mode()[0])
 
 st.markdown("---")
 
-# ------------------ MAIN GRID ------------------
-colA, colB = st.columns([1.4,1])
+# ---------- MAIN GRID ----------
+col1, col2 = st.columns([1.5,1])
 
-# -------- Restaurant-wise Cost Comparison --------
-with colA:
-    cost_df = filtered_df.groupby("name")["approx_cost"].mean().sort_values(ascending=False).head(12).reset_index()
+# -------- Chart 1: Name-wise Cost --------
+with col1:
+    cost_df = filtered_df.groupby("name")["approx_cost"].mean().sort_values(ascending=False).head(10).reset_index()
+
+    cost_df["Highlight"] = cost_df["name"].apply(lambda x: "Selected" if x == restaurant else "Others")
 
     fig1 = px.bar(
         cost_df,
         x="name",
         y="approx_cost",
-        title="Top 12 Restaurants by Average Cost",
-        color_discrete_sequence=["#E23744"]
+        color="Highlight",
+        color_discrete_map={
+            "Selected": "#F43F5E",
+            "Others": "#334155"
+        },
+        title="Top 10 Restaurants by Cost"
     )
+
     fig1.update_layout(
-        height=400,
+        height=380,
         xaxis_tickangle=-45,
-        plot_bgcolor="#0B1220",
-        paper_bgcolor="#0B1220",
-        font=dict(color="white")
+        plot_bgcolor="#0F172A",
+        paper_bgcolor="#0F172A",
+        font=dict(color="white"),
+        legend_title=""
     )
+
     st.plotly_chart(fig1, use_container_width=True)
 
-# -------- Votes vs Rating --------
-with colB:
+# -------- Chart 2: Votes vs Rating --------
+with col2:
     fig2 = px.scatter(
         filtered_df,
         x="votes",
         y="rate",
         size="approx_cost",
+        color_discrete_sequence=["#22D3EE"],
         hover_name="name",
-        color_discrete_sequence=["#2DD4BF"]
+        title="Popularity vs Rating"
     )
+
     fig2.update_layout(
-        height=400,
-        plot_bgcolor="#0B1220",
-        paper_bgcolor="#0B1220",
-        font=dict(color="white"),
-        title="Votes vs Rating Analysis"
+        height=380,
+        plot_bgcolor="#0F172A",
+        paper_bgcolor="#0F172A",
+        font=dict(color="white")
     )
+
     st.plotly_chart(fig2, use_container_width=True)
 
 st.markdown("---")
 
-# ------------------ BOTTOM SECTION ------------------
-colC, colD = st.columns(2)
+# ---------- BOTTOM SECTION ----------
+b1, b2 = st.columns(2)
 
 # -------- Rating Distribution --------
-with colC:
+with b1:
     fig3 = px.histogram(
         filtered_df,
         x="rate",
         nbins=20,
-        color_discrete_sequence=["#6366F1"]
-    )
-    fig3.update_layout(
-        height=300,
-        plot_bgcolor="#0B1220",
-        paper_bgcolor="#0B1220",
-        font=dict(color="white"),
+        color_discrete_sequence=["#A78BFA"],
         title="Rating Distribution"
     )
+
+    fig3.update_layout(
+        height=300,
+        plot_bgcolor="#0F172A",
+        paper_bgcolor="#0F172A",
+        font=dict(color="white")
+    )
+
     st.plotly_chart(fig3, use_container_width=True)
 
 # -------- Top Restaurant Types --------
-with colD:
-    type_df = filtered_df.rest_type.value_counts().head(10).reset_index()
+with b2:
+    type_df = filtered_df.rest_type.value_counts().head(8).reset_index()
     type_df.columns = ["rest_type", "count"]
 
     fig4 = px.bar(
@@ -141,15 +152,17 @@ with colD:
         x="count",
         y="rest_type",
         orientation="h",
-        color_discrete_sequence=["#F59E0B"]
+        color_discrete_sequence=["#38BDF8"],
+        title="Top Restaurant Types"
     )
+
     fig4.update_layout(
         height=300,
-        plot_bgcolor="#0B1220",
-        paper_bgcolor="#0B1220",
-        font=dict(color="white"),
-        title="Top 10 Restaurant Types"
+        plot_bgcolor="#0F172A",
+        paper_bgcolor="#0F172A",
+        font=dict(color="white")
     )
+
     st.plotly_chart(fig4, use_container_width=True)
 
-st.markdown("### 2026 Executive Analytics | Portfolio Ready")
+st.markdown("### 2026 BI Portfolio Project")
