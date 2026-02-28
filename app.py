@@ -4,33 +4,31 @@ import plotly.express as px
 
 st.set_page_config(page_title="Zomato Analytics", layout="wide")
 
-# -------------------- CLEAN LIGHT STYLE --------------------
+# -----------------------------
+# SAME DARK STYLE (AS BEFORE)
+# -----------------------------
 st.markdown("""
 <style>
-.stApp {
-    background-color: #f4f6f9;
+.main {
+    background: linear-gradient(135deg, #1e1e2f, #111827);
 }
-
 div[data-testid="metric-container"] {
-    background-color: white;
+    background-color: #1f2937;
+    border: 1px solid #374151;
+    padding: 10px;
     border-radius: 10px;
-    padding: 12px;
-    border: 1px solid #e5e7eb;
 }
-
 h1, h2, h3 {
-    color: #1f2937;
-}
-
-.block-container {
-    padding-top: 1.5rem;
+    color: white;
 }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("Zomato Restaurant Analytics Dashboard")
+st.title("🍽 Zomato Restaurant Analytics Dashboard")
 
-# -------------------- LOAD DATA --------------------
+# -----------------------------
+# Load Data
+# -----------------------------
 @st.cache_data
 def load_data():
     df = pd.read_csv("Zomato_Data.csv")
@@ -47,8 +45,10 @@ def load_data():
 
 df = load_data()
 
-# -------------------- SIDEBAR --------------------
-st.sidebar.header("Filters")
+# -----------------------------
+# Sidebar
+# -----------------------------
+st.sidebar.header("🔎 Filters")
 
 location = st.sidebar.selectbox(
     "Select Location",
@@ -64,33 +64,33 @@ restaurant = st.sidebar.selectbox(
 
 rest_df = filtered_df[filtered_df['name'] == restaurant]
 
-# ============================
-# 🔷 TOP KPI CARDS (CLEAR)
-# ============================
+# =============================
+# 🔥 TOP KPI CARDS
+# =============================
 k1, k2, k3, k4 = st.columns(4)
 
-k1.metric("Rating", round(rest_df['rate'].mean(), 2))
-k2.metric("Total Votes", int(rest_df['votes'].sum()))
-k3.metric("Average Cost for Two", int(rest_df['approx_cost'].mean()))
+k1.metric("⭐ Rating", round(rest_df['rate'].mean(), 2))
+k2.metric("🗳 Total Votes", int(rest_df['votes'].sum()))
+k3.metric("💰 Avg Cost", int(rest_df['approx_cost'].mean()))
 
 top_type = (
     filtered_df['rest_type'].mode()[0]
     if not filtered_df['rest_type'].mode().empty else "N/A"
 )
 
-k4.metric("Most Popular Type (Location)", top_type)
+k4.metric("🍴 Popular Type", top_type)
 
 st.divider()
 
-# ============================
-# 🔷 MAIN GRAPHS SIDE BY SIDE
-# ============================
+# =============================
+# 🔥 MAIN GRAPHS SIDE BY SIDE
+# =============================
 left, right = st.columns(2)
 
-# ---------------- LOCATION GRAPH ----------------
+# -------- Location Graph --------
 with left:
 
-    st.subheader("Location Wise Average Cost")
+    st.subheader("📍 Location Wise Avg Cost")
 
     loc_cost = (
         df.groupby('location')['approx_cost']
@@ -104,18 +104,18 @@ with left:
         loc_cost,
         x='location',
         y='approx_cost',
-        color_discrete_sequence=['#2563eb']
+        color_discrete_sequence=['#3b82f6']   # clean blue
     )
 
     fig_loc.update_layout(
-        height=340,
+        height=350,
         xaxis_tickangle=-40,
-        template="simple_white"
+        template="plotly_dark"
     )
 
     st.plotly_chart(fig_loc, use_container_width=True)
 
-    # Small compact cards
+    # small cards under graph
     c1, c2 = st.columns(2)
     c1.metric("Avg Cost (Selected Location)",
               int(filtered_df['approx_cost'].mean()))
@@ -123,10 +123,10 @@ with left:
               filtered_df['name'].nunique())
 
 
-# ---------------- RESTAURANT GRAPH ----------------
+# -------- Restaurant Graph --------
 with right:
 
-    st.subheader("Top Costly Restaurants (Selected Location)")
+    st.subheader("🍽 Top Costly Restaurants")
 
     top_cost = (
         filtered_df.groupby('name')['approx_cost']
@@ -139,19 +139,18 @@ with right:
         top_cost,
         x='name',
         y='approx_cost',
-        color_discrete_sequence=['#10b981']
+        color_discrete_sequence=['#10b981']  # clean green
     )
 
     fig_res.update_layout(
-        height=340,
+        height=350,
         xaxis_tickangle=-40,
-        template="simple_white"
+        template="plotly_dark"
     )
 
     st.plotly_chart(fig_res, use_container_width=True)
 
     r1, r2 = st.columns(2)
-    r1.metric("Selected Restaurant",
-              restaurant)
+    r1.metric("Selected Restaurant", restaurant)
     r2.metric("Restaurant Avg Cost",
               int(rest_df['approx_cost'].mean()))
