@@ -1,22 +1,34 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
 import os
 
-st.set_page_config(page_title="Zomato Analytics Dashboard", layout="wide")
+st.set_page_config(layout="wide", page_title="Zomato Executive Dashboard")
 
-st.title(" Zomato Analytics Dashboard")
-st.markdown("### Interactive Categorical vs Numeric Analysis")
+# ---------- CUSTOM CSS (Company Look) ----------
+st.markdown("""
+<style>
+.main {
+    background-color: #0e1117;
+}
+div[data-testid="metric-container"] {
+    background-color: #1c1f26;
+    padding: 15px;
+    border-radius: 10px;
+    border: 1px solid #2a2e39;
+}
+</style>
+""", unsafe_allow_html=True)
 
-# -------------------- Load Data --------------------
+st.title("🍽️ Zomato Executive Analytics Dashboard")
+
+# ---------- LOAD DATA ----------
 @st.cache_data
 def load_data():
     file_path = os.path.join(os.path.dirname(__file__), "Zomato_Data.csv")
     df = pd.read_csv(file_path)
 
     df = df.drop('Unnamed: 0', axis=1)
-
     df = df.rename(columns={'approx_cost(for two people)': 'approx_cost'})
     df = df.fillna(0)
 
@@ -28,129 +40,97 @@ def load_data():
 
 df = load_data()
 
-# -------------------- Sidebar Filters --------------------
-st.sidebar.header("🔎 Filter Data")
+# ---------- GLOBAL FILTERS ----------
+colf1, colf2 = st.columns(2)
 
-location = st.sidebar.selectbox("Select Location", sorted(df['location'].unique()))
-online_order = st.sidebar.selectbox("Online Order", ["All"] + list(df['online_order'].unique()))
+with colf1:
+    location = st.selectbox("📍 Select Location", sorted(df.location.unique()))
 
-filtered_df = df[df['location'] == location]
+filtered_df = df[df.location == location]
 
-if online_order != "All":
-    filtered_df = filtered_df[filtered_df['online_order'] == online_order]
+with colf2:
+    restaurant = st.selectbox("🍴 Select Restaurant", filtered_df.name.unique())
 
-# -------------------- KPI Section --------------------
-st.markdown("## 📊 Key Metrics")
+restaurant_df = filtered_df[filtered_df.name == restaurant]
 
+# ---------- KPI SECTION ----------
 col1, col2, col3, col4 = st.columns(4)
 
-col1.metric("Total Restaurants", filtered_df.shape[0])
-col2.metric("Average Cost", f"₹ {round(filtered_df['approx_cost'].mean(),2)}")
-col3.metric("Average Rating", round(filtered_df['rate'].mean(),2))
-col4.metric("Average Votes", round(filtered_df['votes'].mean(),2))
+col1.metric("⭐ Rating", round(restaurant_df.rate.mean(),2))
+col2.metric("🗳 Votes", int(restaurant_df.votes.mean()))
+col3.metric("💰 Avg Cost", f"₹ {int(restaurant_df.approx_cost.mean())}")
+col4.metric("🛵 Online Order", restaurant_df.online_order.mode()[0])
 
-st.markdown("---")
+# ---------- MAIN GRID (NO SCROLL FIT SCREEN) ----------
+colA, colB, colC = st.columns([1.2,1.2,1])
 
-# -------------------- Charts Row 1 --------------------
-col1, col2 = st.columns(2)
-
-with col1:
-    st.subheader("💰 Top 10 Expensive Restaurants")
-    top_cost = filtered_df.groupby('name')['approx_cost'].mean().nlargest(10).reset_index()
-    fig1 = px.bar(top_cost,
-                  x='name',
-                  y='approx_cost',
-                  color='approx_cost',
-                  title="Top 10 Restaurant by Cost",
-                  template="plotly_dark")
-    fig1.update_layout(xaxis_tickangle=-45)
+# ---------- Chart 1: Cost Distribution ----------
+with colA:
+    fig1 = px.bar(
+        filtered_df.groupby("name")["approx_cost"].mean().nlargest(8).reset_index(),
+        x="name",
+        y="approx_cost",
+        color="approx_cost",
+        template="plotly_dark",
+        title="Top Costly Restaurants"
+    )
+    fig1.update_layout(height=300, margin=dict(l=10,r=10,t=40,b=10))
     st.plotly_chart(fig1, use_container_width=True)
 
-with col2:
-    st.subheader("⭐ Rating Distribution")
-    fig2 = px.histogram(filtered_df,
-                        x='rate',
-                        nbins=20,
-                        color_discrete_sequence=['orange'],
-                        template="plotly_dark")
+# ---------- Chart 2: Votes vs Rating ----------
+with colB:
+    fig2 = px.scatter(
+        filtered_df,
+        x="votes",
+        y="rate",
+        size="approx_cost",
+        color="online_order",
+        hover_name="name",
+        template="plotly_dark",
+        title="Votes vs Rating Impact"
+    )
+    fig2.update_layout(height=300, margin=dict(l=10,r=10,t=40,b=10))
     st.plotly_chart(fig2, use_container_width=True)
 
-st.markdown("---")
-
-# -------------------- Charts Row 2 --------------------
-col1, col2 = st.columns(2)
-
-with col1:
-    st.subheader("📊 Votes vs Rating (Bubble)")
-    fig3 = px.scatter(filtered_df,
-                      x='votes',
-                      y='rate',
-                      size='approx_cost',
-                      color='online_order',
-                      hover_name='name',
-                      template="plotly_dark")
+# ---------- Chart 3: Restaurant Type Pie ----------
+with colC:
+    fig3 = px.pie(
+        filtered_df,
+        names="rest_type",
+        template="plotly_dark",
+        title="Restaurant Type Share"
+    )
+    fig3.update_layout(height=300, margin=dict(l=10,r=10,t=40,b=10))
     st.plotly_chart(fig3, use_container_width=True)
 
-with col2:
-    st.subheader("🛵 Online Order Impact on Rating")
-    online_analysis = filtered_df.groupby('online_order')['rate'].mean().reset_index()
-    fig4 = px.bar(online_analysis,
-                  x='online_order',
-                  y='rate',
-                  color='rate',
-                  template="plotly_dark")
+# ---------- Bottom Row ----------
+colD, colE = st.columns(2)
+
+# Rating Distribution Line
+with colD:
+    fig4 = px.histogram(
+        filtered_df,
+        x="rate",
+        nbins=20,
+        template="plotly_dark",
+        title="Rating Distribution"
+    )
+    fig4.update_layout(height=250)
     st.plotly_chart(fig4, use_container_width=True)
 
-st.markdown("---")
+# Online Order Impact
+with colE:
+    online_analysis = filtered_df.groupby("online_order")["rate"].mean().reset_index()
 
-# -------------------- Charts Row 3 --------------------
-col1, col2 = st.columns(2)
-
-with col1:
-    st.subheader("💵 Cost vs Rating Relationship")
-    fig5 = px.scatter(filtered_df,
-                      x='approx_cost',
-                      y='rate',
-                      color='rate',
-                      template="plotly_dark")
+    fig5 = px.bar(
+        online_analysis,
+        x="online_order",
+        y="rate",
+        color="rate",
+        template="plotly_dark",
+        title="Online Order vs Rating"
+    )
+    fig5.update_layout(height=250)
     st.plotly_chart(fig5, use_container_width=True)
 
-with col2:
-    st.subheader("🏆 Top 10 Highest Rated Restaurants")
-    top_rated = filtered_df.groupby('name')['rate'].mean().nlargest(10).reset_index()
-    fig6 = px.bar(top_rated,
-                  x='name',
-                  y='rate',
-                  color='rate',
-                  template="plotly_dark")
-    fig6.update_layout(xaxis_tickangle=-45)
-    st.plotly_chart(fig6, use_container_width=True)
-
-st.markdown("---")
-
-# -------------------- Category Analysis --------------------
-st.subheader("📌 Restaurant Type Distribution")
-
-type_analysis = filtered_df['rest_type'].value_counts().nlargest(10).reset_index()
-type_analysis.columns = ['rest_type', 'count']
-
-fig7 = px.pie(type_analysis,
-              names='rest_type',
-              values='count',
-              template="plotly_dark")
-st.plotly_chart(fig7, use_container_width=True)
-
-st.markdown("---")
-
-# -------------------- Correlation Heatmap --------------------
-st.subheader("🔥 Correlation Between Numeric Features")
-
-corr = filtered_df[['approx_cost', 'rate', 'votes']].corr()
-
-fig8 = px.imshow(corr,
-                 text_auto=True,
-                 template="plotly_dark",
-                 color_continuous_scale='reds')
-st.plotly_chart(fig8, use_container_width=True)
-
-st.markdown("### 🚀 Built with Streamlit & Plotly | Live Interactive Dashboard")
+st.markdown("### 🚀 Executive Level Interactive Dashboard | 2026 Portfolio Ready")
