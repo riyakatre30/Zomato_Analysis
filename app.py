@@ -2,138 +2,121 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from streamlit_plotly_events import plotly_events
-import os
 
-st.set_page_config(layout="wide", page_title="Zomato Interactive BI")
+st.set_page_config(layout="wide")
 
 # ---------- THEME ----------
 st.markdown("""
 <style>
-.stApp {background-color: #0F172A;}
-section[data-testid="stSidebar"] {background-color: #111827;}
+.stApp {background-color:#0B1220;}
 div[data-testid="metric-container"] {
-    background: #1E293B;
-    border-radius: 10px;
-    padding: 15px;
+    background:#1E293B;
+    border-radius:12px;
+    padding:16px;
 }
-h1,h2,h3 {color:white;}
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🍽 Zomato Interactive Intelligence")
+st.title("Zomato Performance Intelligence")
 
 # ---------- LOAD ----------
-@st.cache_data
-def load_data():
-    df = pd.read_csv("Zomato_Data.csv")
-    df = df.drop('Unnamed: 0', axis=1)
-    df = df.rename(columns={'approx_cost(for two people)': 'approx_cost'})
-    df = df.fillna(0)
-    df.approx_cost = df.approx_cost.replace('[,]', '', regex=True).astype(int)
-    df.rate = df.rate.replace(['-', 'NEW'], 0)
-    df.rate = df.rate.replace('[/5]', '', regex=True).astype(float)
-    return df
+df = pd.read_csv("Zomato_Data.csv")
+df = df.drop('Unnamed: 0', axis=1)
+df = df.rename(columns={'approx_cost(for two people)':'approx_cost'})
+df = df.fillna(0)
+df.approx_cost = df.approx_cost.replace('[,]','',regex=True).astype(int)
+df.rate = df.rate.replace(['-','NEW'],0)
+df.rate = df.rate.replace('[/5]','',regex=True).astype(float)
 
-df = load_data()
-
-# ---------- SIDEBAR ----------
-location = st.sidebar.selectbox("Select Location", sorted(df.location.unique()))
+# ---------- FILTER ----------
+location = st.sidebar.selectbox("Location", sorted(df.location.unique()))
 filtered_df = df[df.location == location]
 
-# ---------- MAIN BIG COST CHART ----------
-st.subheader("Restaurant Cost Comparison (Click to Select)")
+# ---------- KPI STRIP (Only Summary) ----------
+k1,k2,k3 = st.columns(3)
+k1.metric("Total Restaurants", filtered_df.shape[0])
+k2.metric("Avg Rating (Location)", round(filtered_df.rate.mean(),2))
+k3.metric("Avg Cost (Location)", f"₹ {int(filtered_df.approx_cost.mean())}")
 
-cost_df = filtered_df.groupby("name")["approx_cost"].mean().sort_values(ascending=False).head(15).reset_index()
+st.markdown("---")
 
-fig = px.bar(
-    cost_df,
-    x="name",
-    y="approx_cost",
-    color_discrete_sequence=["#F43F5E"]
-)
+# ---------- HERO CHART ----------
+col1, col2 = st.columns([2,1])
 
-fig.update_layout(
-    height=450,
-    plot_bgcolor="#0F172A",
-    paper_bgcolor="#0F172A",
-    font=dict(color="white"),
-    xaxis_tickangle=-45
-)
+with col1:
+    cost_df = filtered_df.groupby("name")["approx_cost"].mean().sort_values(ascending=False).head(20).reset_index()
 
-selected_points = plotly_events(fig, click_event=True)
+    fig = px.bar(
+        cost_df,
+        x="name",
+        y="approx_cost",
+        color="approx_cost",
+        color_continuous_scale="Reds"
+    )
 
-if selected_points:
-    selected_name = selected_points[0]['x']
+    fig.update_layout(
+        height=500,
+        plot_bgcolor="#0B1220",
+        paper_bgcolor="#0B1220",
+        font=dict(color="white"),
+        xaxis_tickangle=-45
+    )
+
+    selected = plotly_events(fig, click_event=True)
+
+    st.plotly_chart(fig, use_container_width=True)
+
+if selected:
+    selected_name = selected[0]["x"]
 else:
-    selected_name = cost_df.iloc[0]['name']
+    selected_name = cost_df.iloc[0]["name"]
 
 restaurant_df = filtered_df[filtered_df.name == selected_name]
 
-st.markdown("---")
-
-# ---------- KPI SECTION ----------
-k1,k2,k3,k4 = st.columns(4)
-
-k1.metric("Selected Restaurant", selected_name)
-k2.metric("⭐ Rating", round(restaurant_df.rate.mean(),2))
-k3.metric("🗳 Votes", int(restaurant_df.votes.mean()))
-k4.metric("🍴 Type", restaurant_df.rest_type.mode()[0])
+# ---------- SIDE INSIGHT PANEL ----------
+with col2:
+    st.subheader(selected_name)
+    st.metric("Rating", round(restaurant_df.rate.mean(),2))
+    st.metric("Votes", int(restaurant_df.votes.mean()))
+    st.metric("Type", restaurant_df.rest_type.mode()[0])
+    st.metric("Online Order", restaurant_df.online_order.mode()[0])
 
 st.markdown("---")
 
-# ---------- SECOND ROW ----------
-col1,col2 = st.columns(2)
+# ---------- BOTTOM STRIP (No Repetition) ----------
+c1,c2 = st.columns(2)
 
-# Scatter Highlight
-with col1:
-    filtered_df["Highlight"] = filtered_df["name"].apply(
-        lambda x: "Selected" if x == selected_name else "Others"
-    )
-
+with c1:
     fig2 = px.scatter(
         filtered_df,
         x="votes",
-        y="rate",
-        size="approx_cost",
-        color="Highlight",
-        color_discrete_map={
-            "Selected": "#22D3EE",
-            "Others": "#334155"
-        },
-        hover_name="name",
-        title="Popularity vs Rating"
+        y="approx_cost",
+        size="rate",
+        color="rate",
+        color_continuous_scale="Tealgrn"
     )
-
-    fig2.update_layout(
-        height=350,
-        plot_bgcolor="#0F172A",
-        paper_bgcolor="#0F172A",
-        font=dict(color="white")
-    )
-
+    fig2.update_layout(height=350,
+                       plot_bgcolor="#0B1220",
+                       paper_bgcolor="#0B1220",
+                       font=dict(color="white"),
+                       title="Cost vs Popularity")
     st.plotly_chart(fig2, use_container_width=True)
 
-# Restaurant Type Distribution
-with col2:
+with c2:
     type_df = filtered_df.rest_type.value_counts().head(8).reset_index()
-    type_df.columns = ["rest_type","count"]
+    type_df.columns = ["Type","Count"]
 
     fig3 = px.bar(
         type_df,
-        x="count",
-        y="rest_type",
+        x="Count",
+        y="Type",
         orientation="h",
-        color_discrete_sequence=["#A78BFA"],
-        title="Top Restaurant Types"
+        color="Count",
+        color_continuous_scale="Purples"
     )
-
-    fig3.update_layout(
-        height=350,
-        plot_bgcolor="#0F172A",
-        paper_bgcolor="#0F172A",
-        font=dict(color="white")
-    )
-
+    fig3.update_layout(height=350,
+                       plot_bgcolor="#0B1220",
+                       paper_bgcolor="#0B1220",
+                       font=dict(color="white"),
+                       title="Dominant Restaurant Types")
     st.plotly_chart(fig3, use_container_width=True)
-
-st.markdown("### 2026 Interactive BI Dashboard")
