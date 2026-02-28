@@ -12,19 +12,13 @@ st.markdown("""
 .main {
     background: linear-gradient(135deg, #2c3e50, #3a3f47, #4b5563);
 }
-.metric-container {
-    background: rgba(255,255,255,0.08);
-    padding: 12px;
-    border-radius: 12px;
-    text-align: center;
-}
 h1, h2, h3 {
     color: white;
 }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🍽 Zomato Restaurant Analytics Dashboard")
+st.title("🍽 Zomato  Analytics ")
 
 # -----------------------------
 # Load Data
@@ -48,7 +42,7 @@ df = load_data()
 # -----------------------------
 # Sidebar Filters
 # -----------------------------
-st.sidebar.header("🔎 Filter Panel")
+st.sidebar.header(" Filter Panel")
 
 location = st.sidebar.selectbox(
     "Select Location",
@@ -69,10 +63,10 @@ rest_df = filtered_df[filtered_df['name'] == restaurant]
 # -----------------------------
 col1, col2, col3, col4 = st.columns(4)
 
-col1.metric("⭐ Rating", round(rest_df['rate'].mean(), 2))
-col2.metric("🗳 Total Votes", int(rest_df['votes'].sum()))
-col3.metric("💰 Avg Cost", int(rest_df['approx_cost'].mean()))
-col4.metric("🍴 Top Rest Type",
+col1.metric(" Rating", round(rest_df['rate'].mean(), 2))
+col2.metric(" Total Votes", int(rest_df['votes'].sum()))
+col3.metric(" Avg Cost", int(rest_df['approx_cost'].mean()))
+col4.metric(" Top Rest Type",
             filtered_df['rest_type'].mode()[0]
             if not filtered_df['rest_type'].mode().empty else "N/A")
 
@@ -85,7 +79,7 @@ left, right = st.columns(2)
 
 # 📍 Location Wise Cost
 with left:
-    st.subheader("📍 Top 10 Expensive Locations")
+    st.subheader(" Expensive Locations")
 
     loc_cost = (
         df.groupby('location')['approx_cost']
@@ -98,18 +92,15 @@ with left:
     fig_loc = px.bar(
         loc_cost,
         x='location',
-        y='approx_cost'
-    )
-
-    fig_loc.update_traces(
-        marker=dict(
-            color=loc_cost['approx_cost'],
-            colorscale=[
-                [0, "#1f2937"],
-                [0.5, "#374151"],
-                [1, "#d1d5db"]
-            ]
-        )
+        y='approx_cost',
+        color='approx_cost',
+        color_continuous_scale=[
+            "#0d1b2a",  # dark navy
+            "#1b263b",
+            "#415a77",
+            "#778da9",
+            "#a8dadc"   # light blue
+        ]
     )
 
     fig_loc.update_layout(
@@ -124,7 +115,7 @@ with left:
 
 # 🍽 Restaurant Wise Cost
 with right:
-    st.subheader("🍽 Top 10 Costly Restaurants (Selected Location)")
+    st.subheader("Restaurants ")
 
     top_cost = (
         filtered_df.groupby('name')['approx_cost']
@@ -136,18 +127,15 @@ with right:
     fig_res = px.bar(
         top_cost,
         x='name',
-        y='approx_cost'
-    )
-
-    fig_res.update_traces(
-        marker=dict(
-            color=top_cost['approx_cost'],
-            colorscale=[
-                [0, "#0f172a"],
-                [0.5, "#334155"],
-                [1, "#e5e7eb"]
-            ]
-        )
+        y='approx_cost',
+        color='approx_cost',
+        color_continuous_scale=[
+            "#001f3f",
+            "#003566",
+            "#00509d",
+            "#3a86ff",
+            "#90e0ef"
+        ]
     )
 
     fig_res.update_layout(
@@ -162,10 +150,10 @@ with right:
 st.markdown("---")
 
 # -----------------------------
-# Bottom Small Cards (Location Summary)
+# Bottom Small Cards
 # -----------------------------
 c1, c2, c3 = st.columns(3)
 
-c1.metric("📊 Total Restaurants", filtered_df['name'].nunique())
-c2.metric("💵 Avg Location Cost", int(filtered_df['approx_cost'].mean()))
-c3.metric("⭐ Avg Location Rating", round(filtered_df['rate'].mean(), 2))
+c1.metric(" Total Restaurants", filtered_df['name'].nunique())
+c2.metric(" Avg Location Cost", int(filtered_df['approx_cost'].mean()))
+c3.metric(" Avg Location Rating", round(filtered_df['rate'].mean(), 2))
