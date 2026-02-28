@@ -4,9 +4,7 @@ import plotly.express as px
 
 st.set_page_config(page_title="Zomato Analytics", layout="wide")
 
-# -----------------------------
-# Custom Styling
-# -----------------------------
+# ----------------- STYLE -----------------
 st.markdown("""
 <style>
 .main {
@@ -15,8 +13,8 @@ st.markdown("""
 div[data-testid="metric-container"] {
     background-color: #1f2937;
     border: 1px solid #374151;
-    padding: 15px;
-    border-radius: 12px;
+    padding: 10px;
+    border-radius: 10px;
 }
 h1, h2, h3 {
     color: white;
@@ -24,11 +22,9 @@ h1, h2, h3 {
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🍽 Zomato Restaurant Analytics Dashboard")
+st.title("🍽 Zomato  Analytics Dashboard")
 
-# -----------------------------
-# Load Data
-# -----------------------------
+# ----------------- LOAD DATA -----------------
 @st.cache_data
 def load_data():
     df = pd.read_csv("Zomato_Data.csv")
@@ -45,10 +41,8 @@ def load_data():
 
 df = load_data()
 
-# -----------------------------
-# Sidebar Filters
-# -----------------------------
-st.sidebar.header("🔎 Filter Panel")
+# ----------------- SIDEBAR -----------------
+st.sidebar.header("🔎 Filters")
 
 location = st.sidebar.selectbox(
     "Select Location",
@@ -64,100 +58,95 @@ restaurant = st.sidebar.selectbox(
 
 rest_df = filtered_df[filtered_df['name'] == restaurant]
 
-# -----------------------------
-# KPI CARDS (Restaurant Level)
-# -----------------------------
-col1, col2, col3 = st.columns(3)
-
-col1.metric("⭐ Rating", round(rest_df['rate'].mean(), 2))
-col2.metric("🗳 Total Votes", int(rest_df['votes'].sum()))
-col3.metric("💰 Avg Cost for Two", int(rest_df['approx_cost'].mean()))
-
 st.divider()
 
-# -----------------------------
-# 📍 LOCATION LEVEL ANALYSIS
-# -----------------------------
-st.subheader("📍 Location Wise Cost Analysis")
+# ==========================================================
+# 🔥 MAIN GRID SECTION
+# ==========================================================
 
-loc_col1, loc_col2 = st.columns(2)
+col1, col2 = st.columns(2)
 
-# Location Wise Avg Cost Ranking
-loc_cost = (
-    df.groupby('location')['approx_cost']
-    .mean()
-    .sort_values(ascending=False)
-    .reset_index()
-    .head(10)
-)
+# ==========================================================
+# 📍 LEFT SIDE → LOCATION GRAPH + CARDS
+# ==========================================================
+with col1:
 
-fig_loc = px.bar(
-    loc_cost,
-    x='location',
-    y='approx_cost',
-    color='approx_cost',
-    color_continuous_scale='tealgrn'
-)
+    st.subheader("📍 Location Wise Cost ")
 
-fig_loc.update_layout(
-    title="Top 10 Most Expensive Locations",
-    xaxis_tickangle=-45,
-    height=420,
-    template="plotly_dark"
-)
+    loc_cost = (
+        df.groupby('location')['approx_cost']
+        .mean()
+        .sort_values(ascending=False)
+        .reset_index()
+        .head(10)
+    )
 
-loc_col1.plotly_chart(fig_loc, use_container_width=True)
+    fig_loc = px.bar(
+        loc_cost,
+        x='location',
+        y='approx_cost',
+        color='approx_cost',
+        color_continuous_scale='tealgrn'
+    )
 
-# Location Summary Cards
-avg_loc_cost = int(filtered_df['approx_cost'].mean())
-total_rest = filtered_df['name'].nunique()
-top_rest_type = (
-    filtered_df['rest_type'].mode()[0]
-    if not filtered_df['rest_type'].mode().empty else "N/A"
-)
+    fig_loc.update_layout(
+        height=350,
+        xaxis_tickangle=-45,
+        template="plotly_dark"
+    )
 
-with loc_col2:
-    st.metric("📊 Avg Cost in Selected Location", avg_loc_cost)
-    st.metric("🏬 Total Restaurants", total_rest)
-    st.metric("🍴 Most Popular Type", top_rest_type)
+    st.plotly_chart(fig_loc, use_container_width=True)
 
-st.divider()
+    # ---- Small Cards Below Graph ----
+    c1, c2, c3 = st.columns(3)
 
-# -----------------------------
-# 🍽 RESTAURANT LEVEL ANALYSIS
-# -----------------------------
-st.subheader("🍽 Restaurant Level Cost Comparison")
+    c1.metric("Avg Cost (Selected Location)",
+              int(filtered_df['approx_cost'].mean()))
 
-res_col1, res_col2 = st.columns(2)
+    c2.metric("Total Restaurants",
+              filtered_df['name'].nunique())
 
-# Top 10 Costly Restaurants in Selected Location
-top_cost = (
-    filtered_df.groupby('name')['approx_cost']
-    .mean()
-    .nlargest(10)
-    .reset_index()
-)
+    top_rest_type = (
+        filtered_df['rest_type'].mode()[0]
+        if not filtered_df['rest_type'].mode().empty else "N/A"
+    )
 
-fig_res = px.bar(
-    top_cost,
-    x='name',
-    y='approx_cost',
-    color='approx_cost',
-    color_continuous_scale='plasma'
-)
+    c3.metric("Popular Type", top_rest_type)
 
-fig_res.update_layout(
-    title="Top 10 Costly Restaurants in Selected Location",
-    xaxis_tickangle=-45,
-    height=420,
-    template="plotly_dark"
-)
 
-res_col1.plotly_chart(fig_res, use_container_width=True)
+# ==========================================================
+# 🍽 RIGHT SIDE → RESTAURANT GRAPH + CARDS
+# ==========================================================
+with col2:
 
-# Selected Restaurant Detail Card Section
-with res_col2:
-    st.metric("📌 Selected Restaurant", restaurant)
-    st.metric("⭐ Rating", round(rest_df['rate'].mean(), 2))
-    st.metric("🗳 Votes", int(rest_df['votes'].sum()))
-    st.metric("💰 Avg Cost", int(rest_df['approx_cost'].mean()))
+    st.subheader("🍽 Restaurant Cost Comparison")
+
+    top_cost = (
+        filtered_df.groupby('name')['approx_cost']
+        .mean()
+        .nlargest(10)
+        .reset_index()
+    )
+
+    fig_res = px.bar(
+        top_cost,
+        x='name',
+        y='approx_cost',
+        color='approx_cost',
+        color_continuous_scale='plasma'
+    )
+
+    fig_res.update_layout(
+        height=350,
+        xaxis_tickangle=-45,
+        template="plotly_dark"
+    )
+
+    st.plotly_chart(fig_res, use_container_width=True)
+
+    # ---- Small Cards Below Graph ----
+    r1, r2, r3 = st.columns(3)
+
+    r1.metric("Selected Restaurant", restaurant)
+    r2.metric("Rating", round(rest_df['rate'].mean(), 2))
+    r3.metric("Avg Cost", int(rest_df['approx_cost'].mean()))
