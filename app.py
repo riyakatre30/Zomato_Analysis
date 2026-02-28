@@ -106,16 +106,23 @@ with left:
         .head(10)
     )
 
-    fig_loc = px.bar(
+   fig_loc = px.bar(
         loc_cost,
         x='location',
-        y='approx_cost',
-       colorscale=[
+        y='approx_cost'
+    )
+
+    # Smoky Dark → Light Gradient
+    fig_loc.update_traces(
+        marker=dict(
+            color=loc_cost['approx_cost'],
+            colorscale=[
                 [0, "#1f2937"],      # dark smoky
                 [0.5, "#374151"],    # medium smoky
                 [1, "#9ca3af"]       # light grey
             ],
-           
+            line=dict(width=0)
+        )
     )
 
     fig_loc.update_layout(
@@ -136,16 +143,22 @@ with right:
         .reset_index()
     )
 
-    fig_res = px.bar(
+  fig_res = px.bar(
         top_cost,
         x='name',
-        y='approx_cost',
-         colorscale=[
+        y='approx_cost'
+    )
+
+    fig_res.update_traces(
+        marker=dict(
+            color=top_cost['approx_cost'],
+            colorscale=[
                 [0, "#0f172a"],      # deep dark
                 [0.5, "#334155"],    # smoky blue
                 [1, "#cbd5e1"]       # soft light
             ],
-            
+            line=dict(width=0)
+        )
     )
 
     fig_res.update_layout(
