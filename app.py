@@ -115,7 +115,7 @@ with left:
                 [0.5, "#374151"],    # medium smoky
                 [1, "#9ca3af"]       # light grey
             ],
-            line=dict(width=0)
+           
     )
 
     fig_loc.update_layout(
@@ -145,7 +145,7 @@ with right:
                 [0.5, "#334155"],    # smoky blue
                 [1, "#cbd5e1"]       # soft light
             ],
-            line=dict(width=0)
+            
     )
 
     fig_res.update_layout(
