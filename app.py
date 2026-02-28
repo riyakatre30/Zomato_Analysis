@@ -28,7 +28,7 @@ st.title("🍽 Zomato Restaurant Analytics")
 # ----------------- LOAD DATA -----------------
 @st.cache_data
 def load_data():
-    file_path = "data/Zomato_Data.csv"
+    file_path = "Zomato_Data.csv"
     if not os.path.exists(file_path):
         st.error("Dataset not found. Check file path.")
         st.stop()
