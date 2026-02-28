@@ -1,39 +1,39 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
+import os
 
 st.set_page_config(page_title="Zomato Analytics", layout="wide")
 
-# -----------------------------
-# Custom Styling
-# -----------------------------
+# ----------------- STYLING -----------------
 st.markdown("""
 <style>
 .main {
-    background: linear-gradient(135deg, #1e1e2f, #111827);
+    background: linear-gradient(135deg, #0f172a, #1e293b);
 }
-.metric-card {
-    background-color: #1f2937;
+div[data-testid="metric-container"] {
+    background-color: #1e293b;
+    border: 1px solid #334155;
     padding: 15px;
     border-radius: 12px;
-    text-align: center;
-    color: white;
 }
-h1 {
-    color: white;
+h1, h2, h3 {
+    color: #f8fafc;
 }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🍽 Zomato Restaurant Analytics Dashboard")
+st.title("🍽 Zomato Restaurant Analytics")
 
-# -----------------------------
-# Load Data
-# -----------------------------
+# ----------------- LOAD DATA -----------------
 @st.cache_data
 def load_data():
-    df = pd.read_csv("Zomato_Data.csv")
+    file_path = "data/Zomato_Data.csv"
+    if not os.path.exists(file_path):
+        st.error("Dataset not found. Check file path.")
+        st.stop()
+
+    df = pd.read_csv(file_path)
     df = df.drop('Unnamed: 0', axis=1)
     df = df.rename(columns={'approx_cost(for two people)': 'approx_cost'})
     df = df.fillna(0)
@@ -47,10 +47,8 @@ def load_data():
 
 df = load_data()
 
-# -----------------------------
-# Sidebar Filters
-# -----------------------------
-st.sidebar.header("🔎 Filter Panel")
+# ----------------- SIDEBAR FILTER -----------------
+st.sidebar.header("🔎 Filters")
 
 location = st.sidebar.selectbox(
     "Select Location",
@@ -66,23 +64,20 @@ restaurant = st.sidebar.selectbox(
 
 rest_df = filtered_df[filtered_df['name'] == restaurant]
 
-# -----------------------------
-# KPI Cards
-# -----------------------------
-col1, col2, col3, col4 = st.columns(4)
+# ----------------- KPI CARDS -----------------
+col1, col2, col3 = st.columns(3)
 
-col1.metric("⭐ Rating", round(rest_df['rate'].mean(),2))
-col2.metric("🗳 Votes", int(rest_df['votes'].sum()))
-col3.metric("💰 Avg Cost", int(rest_df['approx_cost'].mean()))
-col4.metric("🍴 Most Popular Type", 
-            filtered_df['rest_type'].mode()[0] if not filtered_df['rest_type'].mode().empty else "N/A")
+col1.metric("💰 Avg Cost", int(rest_df['approx_cost'].mean()))
+col2.metric("⭐ Rating", round(rest_df['rate'].mean(),2))
+col3.metric("🗳 Total Votes", int(rest_df['votes'].sum()))
 
-# -----------------------------
-# Charts Layout
-# -----------------------------
+st.divider()
+
+# ----------------- MAIN VISUAL SECTION -----------------
+
 c1, c2 = st.columns(2)
 
-# 1️⃣ Top 10 Expensive Restaurants (Location Wise)
+# 1️⃣ Location Wise Top Costly Restaurants
 top_cost = (
     filtered_df.groupby('name')['approx_cost']
     .mean()
@@ -96,59 +91,97 @@ fig1 = px.bar(
     y='name',
     orientation='h',
     color='approx_cost',
-    color_continuous_scale='tealgrn',
-    title="Top 10 Costly Restaurants"
+    color_continuous_scale='viridis'
 )
-fig1.update_layout(height=400)
+
+fig1.update_layout(
+    title="Top 10 Costly Restaurants (Location Wise)",
+    height=450,
+    template="plotly_dark"
+)
 
 c1.plotly_chart(fig1, use_container_width=True)
 
-# 2️⃣ Rating Distribution (Location Wise)
-fig2 = px.histogram(
-    filtered_df,
-    x="rate",
-    nbins=20,
-    color_discrete_sequence=["#00C6FF"],
-    title="Rating Distribution"
-)
-fig2.update_layout(height=400)
-
-c2.plotly_chart(fig2, use_container_width=True)
-
-# -----------------------------
-# Bottom Section
-# -----------------------------
-c3, c4 = st.columns(2)
-
-# 3️⃣ Restaurant Type Popularity
-rest_type_count = (
+# 2️⃣ Restaurant Type Popularity
+rest_type = (
     filtered_df['rest_type']
     .value_counts()
     .nlargest(10)
     .reset_index()
 )
-rest_type_count.columns = ['rest_type', 'count']
 
-fig3 = px.bar(
-    rest_type_count,
+rest_type.columns = ['rest_type', 'count']
+
+fig2 = px.bar(
+    rest_type,
     x='rest_type',
     y='count',
     color='count',
-    color_continuous_scale='blues',
-    title="Most Popular Restaurant Types"
+    color_continuous_scale='teal'
 )
-fig3.update_layout(xaxis_tickangle=-45, height=400)
+
+fig2.update_layout(
+    title="Most Popular Restaurant Types",
+    xaxis_tickangle=-45,
+    height=450,
+    template="plotly_dark"
+)
+
+c2.plotly_chart(fig2, use_container_width=True)
+
+st.divider()
+
+# ----------------- BOTTOM SECTION -----------------
+
+c3, c4 = st.columns(2)
+
+# 3️⃣ Name Wise Average Cost (Selected Location)
+name_cost = (
+    filtered_df.groupby('name')['approx_cost']
+    .mean()
+    .sort_values(ascending=False)
+    .head(15)
+    .reset_index()
+)
+
+fig3 = px.bar(
+    name_cost,
+    x='name',
+    y='approx_cost',
+    color='approx_cost',
+    color_continuous_scale='plasma'
+)
+
+fig3.update_layout(
+    title="Restaurant Name Wise Average Cost",
+    xaxis_tickangle=-45,
+    height=450,
+    template="plotly_dark"
+)
 
 c3.plotly_chart(fig3, use_container_width=True)
 
-# 4️⃣ Votes vs Rating (Restaurant Highlighted)
-fig4 = px.bar(
-    filtered_df,
-    x="name",
-    y="votes",
-    color="rate",
-    title="Votes by Restaurant (Color = Rating)"
+# 4️⃣ Online Order Availability
+online = (
+    filtered_df['online_order']
+    .value_counts()
+    .reset_index()
 )
-fig4.update_layout(showlegend=False, height=400)
+
+online.columns = ['online_order', 'count']
+
+fig4 = px.bar(
+    online,
+    x='online_order',
+    y='count',
+    color='count',
+    color_continuous_scale='blues'
+)
+
+fig4.update_layout(
+    title="Online Order Availability",
+    height=450,
+    template="plotly_dark"
+)
 
 c4.plotly_chart(fig4, use_container_width=True)
