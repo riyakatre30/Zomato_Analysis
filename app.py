@@ -18,7 +18,7 @@ div[data-testid="metric-container"] {
     padding: 15px;
     border-radius: 12px;
 }
-h1 {
+h1, h2, h3 {
     color: white;
 }
 </style>
@@ -65,22 +65,72 @@ restaurant = st.sidebar.selectbox(
 rest_df = filtered_df[filtered_df['name'] == restaurant]
 
 # -----------------------------
-# KPI Cards
+# KPI CARDS (Restaurant Level)
 # -----------------------------
 col1, col2, col3 = st.columns(3)
 
 col1.metric("⭐ Rating", round(rest_df['rate'].mean(), 2))
-col2.metric("🗳 Votes", int(rest_df['votes'].sum()))
-col3.metric("💰 Avg Cost", int(rest_df['approx_cost'].mean()))
+col2.metric("🗳 Total Votes", int(rest_df['votes'].sum()))
+col3.metric("💰 Avg Cost for Two", int(rest_df['approx_cost'].mean()))
 
 st.divider()
 
 # -----------------------------
-# GRAPH SECTION (Side by Side)
+# 📍 LOCATION LEVEL ANALYSIS
 # -----------------------------
-g1, g2 = st.columns(2)
+st.subheader("📍 Location Wise Cost Analysis")
 
-# 1️⃣ Top 10 Costly Restaurants (Vertical Bar)
+loc_col1, loc_col2 = st.columns(2)
+
+# Location Wise Avg Cost Ranking
+loc_cost = (
+    df.groupby('location')['approx_cost']
+    .mean()
+    .sort_values(ascending=False)
+    .reset_index()
+    .head(10)
+)
+
+fig_loc = px.bar(
+    loc_cost,
+    x='location',
+    y='approx_cost',
+    color='approx_cost',
+    color_continuous_scale='tealgrn'
+)
+
+fig_loc.update_layout(
+    title="Top 10 Most Expensive Locations",
+    xaxis_tickangle=-45,
+    height=420,
+    template="plotly_dark"
+)
+
+loc_col1.plotly_chart(fig_loc, use_container_width=True)
+
+# Location Summary Cards
+avg_loc_cost = int(filtered_df['approx_cost'].mean())
+total_rest = filtered_df['name'].nunique()
+top_rest_type = (
+    filtered_df['rest_type'].mode()[0]
+    if not filtered_df['rest_type'].mode().empty else "N/A"
+)
+
+with loc_col2:
+    st.metric("📊 Avg Cost in Selected Location", avg_loc_cost)
+    st.metric("🏬 Total Restaurants", total_rest)
+    st.metric("🍴 Most Popular Type", top_rest_type)
+
+st.divider()
+
+# -----------------------------
+# 🍽 RESTAURANT LEVEL ANALYSIS
+# -----------------------------
+st.subheader("🍽 Restaurant Level Cost Comparison")
+
+res_col1, res_col2 = st.columns(2)
+
+# Top 10 Costly Restaurants in Selected Location
 top_cost = (
     filtered_df.groupby('name')['approx_cost']
     .mean()
@@ -88,50 +138,26 @@ top_cost = (
     .reset_index()
 )
 
-fig1 = px.bar(
+fig_res = px.bar(
     top_cost,
     x='name',
     y='approx_cost',
     color='approx_cost',
-    color_continuous_scale='tealgrn',
+    color_continuous_scale='plasma'
 )
 
-fig1.update_layout(
-    title="Top 10 Costly Restaurants",
-    xaxis_title="Restaurant Name",
-    yaxis_title="Average Cost",
+fig_res.update_layout(
+    title="Top 10 Costly Restaurants in Selected Location",
     xaxis_tickangle=-45,
-    height=450,
+    height=420,
     template="plotly_dark"
 )
 
-g1.plotly_chart(fig1, use_container_width=True)
+res_col1.plotly_chart(fig_res, use_container_width=True)
 
-# 2️⃣ Most Popular Restaurant Types
-rest_type_count = (
-    filtered_df['rest_type']
-    .value_counts()
-    .nlargest(10)
-    .reset_index()
-)
-
-rest_type_count.columns = ['rest_type', 'count']
-
-fig2 = px.bar(
-    rest_type_count,
-    x='rest_type',
-    y='count',
-    color='count',
-    color_continuous_scale='blues',
-)
-
-fig2.update_layout(
-    title="Most Popular Restaurant Types",
-    xaxis_title="Restaurant Type",
-    yaxis_title="Count",
-    xaxis_tickangle=-45,
-    height=450,
-    template="plotly_dark"
-)
-
-g2.plotly_chart(fig2, use_container_width=True)
+# Selected Restaurant Detail Card Section
+with res_col2:
+    st.metric("📌 Selected Restaurant", restaurant)
+    st.metric("⭐ Rating", round(rest_df['rate'].mean(), 2))
+    st.metric("🗳 Votes", int(rest_df['votes'].sum()))
+    st.metric("💰 Avg Cost", int(rest_df['approx_cost'].mean()))
