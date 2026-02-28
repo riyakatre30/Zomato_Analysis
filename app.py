@@ -3,154 +3,152 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
-st.set_page_config(page_title="Zomato Pro Dashboard", layout="wide")
+st.set_page_config(page_title="Zomato Analytics", layout="wide")
 
-# ------------------ CUSTOM CSS ------------------
+# -----------------------------
+# Custom Styling
+# -----------------------------
 st.markdown("""
 <style>
-.stApp {
-    background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
-    color: white;
+.main {
+    background: linear-gradient(135deg, #1e1e2f, #111827);
 }
 .metric-card {
-    background-color: #1f2c38;
+    background-color: #1f2937;
     padding: 15px;
-    border-radius: 15px;
+    border-radius: 12px;
     text-align: center;
-    box-shadow: 2px 2px 15px rgba(0,0,0,0.4);
+    color: white;
+}
+h1 {
+    color: white;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# ------------------ LOAD DATA ------------------
-df = pd.read_csv("zomato.csv")
+st.title("🍽 Zomato Restaurant Analytics Dashboard")
 
-# Cleaning
-df = df.dropna(subset=["rate"])
-df["rate"] = df["rate"].str.replace("/5", "")
-df["rate"] = pd.to_numeric(df["rate"], errors="coerce")
+# -----------------------------
+# Load Data
+# -----------------------------
+@st.cache_data
+def load_data():
+    df = pd.read_csv("Zomato_Data.csv")
+    df = df.drop('Unnamed: 0', axis=1)
+    df = df.rename(columns={'approx_cost(for two people)': 'approx_cost'})
+    df = df.fillna(0)
 
-df["approx_cost(for two people)"] = df["approx_cost(for two people)"].astype(str).str.replace(",", "")
-df["approx_cost(for two people)"] = pd.to_numeric(df["approx_cost(for two people)"], errors="coerce")
+    df.approx_cost = df.approx_cost.replace('[,]', '', regex=True).astype('int64')
+    df.rate = df.rate.replace('-', 0)
+    df.rate = df.rate.replace('NEW', 0)
+    df.rate = df.rate.replace('[/5]', '', regex=True).astype('float64')
 
-# ------------------ SIDEBAR FILTER ------------------
-st.sidebar.header("🔎 Filters")
+    return df
 
-location = st.sidebar.selectbox("Select Location", df["location"].dropna().unique())
+df = load_data()
 
-filtered_loc = df[df["location"] == location]
+# -----------------------------
+# Sidebar Filters
+# -----------------------------
+st.sidebar.header("🔎 Filter Panel")
 
-restaurant = st.sidebar.selectbox("Select Restaurant", filtered_loc["name"].unique())
+location = st.sidebar.selectbox(
+    "Select Location",
+    sorted(df['location'].unique())
+)
 
-filtered = filtered_loc[filtered_loc["name"] == restaurant]
+filtered_df = df[df['location'] == location]
 
-# ------------------ TITLE ------------------
-st.title("🍽️ Zomato Restaurant Analytics Dashboard")
+restaurant = st.sidebar.selectbox(
+    "Select Restaurant",
+    sorted(filtered_df['name'].unique())
+)
 
-# ------------------ KPI CARDS ------------------
+rest_df = filtered_df[filtered_df['name'] == restaurant]
+
+# -----------------------------
+# KPI Cards
+# -----------------------------
 col1, col2, col3, col4 = st.columns(4)
 
-col1.markdown(f"""
-<div class="metric-card">
-<h3>⭐ Rating</h3>
-<h2>{round(filtered['rate'].mean(),2)}</h2>
-</div>
-""", unsafe_allow_html=True)
+col1.metric("⭐ Rating", round(rest_df['rate'].mean(),2))
+col2.metric("🗳 Votes", int(rest_df['votes'].sum()))
+col3.metric("💰 Avg Cost", int(rest_df['approx_cost'].mean()))
+col4.metric("🍴 Most Popular Type", 
+            filtered_df['rest_type'].mode()[0] if not filtered_df['rest_type'].mode().empty else "N/A")
 
-col2.markdown(f"""
-<div class="metric-card">
-<h3>🗳 Votes</h3>
-<h2>{int(filtered['votes'].sum())}</h2>
-</div>
-""", unsafe_allow_html=True)
+# -----------------------------
+# Charts Layout
+# -----------------------------
+c1, c2 = st.columns(2)
 
-col3.markdown(f"""
-<div class="metric-card">
-<h3>💰 Avg Cost</h3>
-<h2>₹ {int(filtered['approx_cost(for two people)'].mean())}</h2>
-</div>
-""", unsafe_allow_html=True)
+# 1️⃣ Top 10 Expensive Restaurants (Location Wise)
+top_cost = (
+    filtered_df.groupby('name')['approx_cost']
+    .mean()
+    .nlargest(10)
+    .reset_index()
+)
 
-col4.markdown(f"""
-<div class="metric-card">
-<h3>📦 Online Order</h3>
-<h2>{filtered['online_order'].iloc[0]}</h2>
-</div>
-""", unsafe_allow_html=True)
+fig1 = px.bar(
+    top_cost,
+    x='approx_cost',
+    y='name',
+    orientation='h',
+    color='approx_cost',
+    color_continuous_scale='tealgrn',
+    title="Top 10 Costly Restaurants"
+)
+fig1.update_layout(height=400)
 
-st.markdown("---")
+c1.plotly_chart(fig1, use_container_width=True)
 
-# ------------------ MAIN VISUAL SECTION ------------------
-left, right = st.columns([1.3,1])
+# 2️⃣ Rating Distribution (Location Wise)
+fig2 = px.histogram(
+    filtered_df,
+    x="rate",
+    nbins=20,
+    color_discrete_sequence=["#00C6FF"],
+    title="Rating Distribution"
+)
+fig2.update_layout(height=400)
 
-# -------- Left Side Charts --------
-with left:
+c2.plotly_chart(fig2, use_container_width=True)
 
-    # Name Wise Cost
-    cost_fig = px.bar(
-        filtered_loc.sort_values("approx_cost(for two people)", ascending=False).head(10),
-        x="approx_cost(for two people)",
-        y="name",
-        orientation="h",
-        color="approx_cost(for two people)",
-        color_continuous_scale="Tealgrn"
-    )
-    cost_fig.update_layout(
-        title="Top 10 Restaurants by Cost (Location Wise)",
-        template="plotly_dark",
-        height=350
-    )
-    st.plotly_chart(cost_fig, use_container_width=True)
+# -----------------------------
+# Bottom Section
+# -----------------------------
+c3, c4 = st.columns(2)
 
-    # Rating Distribution
-    rating_fig = px.histogram(
-        filtered_loc,
-        x="rate",
-        nbins=10,
-        color_discrete_sequence=["#ff4b5c"]
-    )
-    rating_fig.update_layout(
-        title="Rating Distribution",
-        template="plotly_dark",
-        height=300
-    )
-    st.plotly_chart(rating_fig, use_container_width=True)
+# 3️⃣ Restaurant Type Popularity
+rest_type_count = (
+    filtered_df['rest_type']
+    .value_counts()
+    .nlargest(10)
+    .reset_index()
+)
+rest_type_count.columns = ['rest_type', 'count']
 
-# -------- Right Side Charts --------
-with right:
+fig3 = px.bar(
+    rest_type_count,
+    x='rest_type',
+    y='count',
+    color='count',
+    color_continuous_scale='blues',
+    title="Most Popular Restaurant Types"
+)
+fig3.update_layout(xaxis_tickangle=-45, height=400)
 
-    # Restaurant Type Distribution
-    type_data = filtered_loc["rest_type"].value_counts().head(6).reset_index()
-    type_data.columns = ["rest_type", "count"]
+c3.plotly_chart(fig3, use_container_width=True)
 
-    donut = px.pie(
-        type_data,
-        names="rest_type",
-        values="count",
-        hole=0.5,
-        color_discrete_sequence=px.colors.sequential.Agsunset
-    )
-    donut.update_layout(
-        title="Top Restaurant Types",
-        template="plotly_dark",
-        height=320
-    )
-    st.plotly_chart(donut, use_container_width=True)
+# 4️⃣ Votes vs Rating (Restaurant Highlighted)
+fig4 = px.bar(
+    filtered_df,
+    x="name",
+    y="votes",
+    color="rate",
+    title="Votes by Restaurant (Color = Rating)"
+)
+fig4.update_layout(showlegend=False, height=400)
 
-    # Location Wise Avg Cost
-    loc_cost = df.groupby("location")["approx_cost(for two people)"].mean().sort_values(ascending=False).head(10).reset_index()
-
-    loc_fig = px.bar(
-        loc_cost,
-        x="approx_cost(for two people)",
-        y="location",
-        orientation="h",
-        color="approx_cost(for two people)",
-        color_continuous_scale="Bluered"
-    )
-    loc_fig.update_layout(
-        title="Top Locations by Avg Cost",
-        template="plotly_dark",
-        height=320
-    )
-    st.plotly_chart(loc_fig, use_container_width=True)
+c4.plotly_chart(fig4, use_container_width=True)
