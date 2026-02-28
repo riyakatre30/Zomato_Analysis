@@ -5,22 +5,32 @@ import plotly.express as px
 st.set_page_config(page_title="Zomato Analytics", layout="wide")
 
 # -----------------------------
-# SAME DARK STYLE (AS BEFORE)
+# SMOKY GRADIENT BACKGROUND
 # -----------------------------
 st.markdown("""
 <style>
 .main {
-    background: linear-gradient(135deg, #1e1e2f, #111827);
+    background: linear-gradient(
+        135deg,
+        #2c3e50 0%,
+        #1f2937 40%,
+        #1b263b 70%,
+        #0f172a 100%
+    );
 }
+
 div[data-testid="metric-container"] {
-    background-color: #1f2937;
-    border: 1px solid #374151;
-    padding: 10px;
-    border-radius: 10px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    backdrop-filter: blur(8px);
+    padding: 12px;
+    border-radius: 12px;
 }
-h1, h2, h3 {
-    color: white;
+
+h1, h2, h3, label {
+    color: #f1f5f9;
 }
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -45,9 +55,7 @@ def load_data():
 
 df = load_data()
 
-# -----------------------------
-# Sidebar
-# -----------------------------
+# Sidebar Filters
 st.sidebar.header("🔎 Filters")
 
 location = st.sidebar.selectbox(
@@ -64,9 +72,9 @@ restaurant = st.sidebar.selectbox(
 
 rest_df = filtered_df[filtered_df['name'] == restaurant]
 
-# =============================
-# 🔥 TOP KPI CARDS
-# =============================
+# -----------------------------
+# TOP KPI CARDS
+# -----------------------------
 k1, k2, k3, k4 = st.columns(4)
 
 k1.metric("⭐ Rating", round(rest_df['rate'].mean(), 2))
@@ -82,14 +90,12 @@ k4.metric("🍴 Popular Type", top_type)
 
 st.divider()
 
-# =============================
-# 🔥 MAIN GRAPHS SIDE BY SIDE
-# =============================
+# -----------------------------
+# SIDE BY SIDE GRAPHS
+# -----------------------------
 left, right = st.columns(2)
 
-# -------- Location Graph --------
 with left:
-
     st.subheader("📍 Location Wise Avg Cost")
 
     loc_cost = (
@@ -104,7 +110,7 @@ with left:
         loc_cost,
         x='location',
         y='approx_cost',
-        color_discrete_sequence=['#3b82f6']   # clean blue
+        color_discrete_sequence=['#60a5fa']
     )
 
     fig_loc.update_layout(
@@ -115,17 +121,7 @@ with left:
 
     st.plotly_chart(fig_loc, use_container_width=True)
 
-    # small cards under graph
-    c1, c2 = st.columns(2)
-    c1.metric("Avg Cost (Selected Location)",
-              int(filtered_df['approx_cost'].mean()))
-    c2.metric("Total Restaurants",
-              filtered_df['name'].nunique())
-
-
-# -------- Restaurant Graph --------
 with right:
-
     st.subheader("🍽 Top Costly Restaurants")
 
     top_cost = (
@@ -139,7 +135,7 @@ with right:
         top_cost,
         x='name',
         y='approx_cost',
-        color_discrete_sequence=['#10b981']  # clean green
+        color_discrete_sequence=['#34d399']
     )
 
     fig_res.update_layout(
@@ -149,8 +145,3 @@ with right:
     )
 
     st.plotly_chart(fig_res, use_container_width=True)
-
-    r1, r2 = st.columns(2)
-    r1.metric("Selected Restaurant", restaurant)
-    r2.metric("Restaurant Avg Cost",
-              int(rest_df['approx_cost'].mean()))
